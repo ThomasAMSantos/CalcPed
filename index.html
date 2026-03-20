@@ -1,0 +1,1243 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Grimório Pediátrico - CalcPed</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;800&family=Inter:wght@300;400;500;600;700&display=swap');
+        
+        :root {
+            --parchment: #fcf8ee;
+            --ink: #2c1e16;
+            --magic-red: #991b1b;
+            --gold: #d97706;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #2a241e; /* Dark tavern wood */
+            background-image: radial-gradient(#3a322a 1px, transparent 1px);
+            background-size: 20px 20px;
+            color: var(--ink);
+            /* Previne scroll horizontal acidental com as partículas */
+            overflow-x: hidden;
+        }
+
+        h1, h2, h3, .rpg-title {
+            font-family: 'Cinzel', serif;
+        }
+
+        .med-card {
+            background-color: var(--parchment);
+            border: 2px solid #e5d9c5;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1), inset 0 0 20px rgba(217, 185, 127, 0.1);
+            transition: all 0.3s ease;
+        }
+
+        .med-card:hover {
+            box-shadow: 0 0 25px rgba(217, 119, 6, 0.5), inset 0 0 20px rgba(217, 185, 127, 0.3);
+            border-color: rgba(217, 119, 6, 0.7);
+            transform: translateY(-3px);
+        }
+
+        .med-card.selected {
+            border-color: var(--gold);
+            background-color: #fffdf8;
+            box-shadow: 0 0 20px rgba(217, 119, 6, 0.6), inset 0 0 30px rgba(217, 119, 6, 0.15);
+        }
+
+        .parchment-bg {
+            background-color: var(--parchment);
+            box-shadow: inset 0 0 40px rgba(139, 90, 43, 0.1);
+        }
+
+        .checkbox-ui.selected-check {
+            background-color: var(--gold);
+            border-color: var(--gold);
+            box-shadow: 0 0 10px var(--gold);
+        }
+
+        /* Custom Scrollbar for the main page */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #2a241e; }
+        ::-webkit-scrollbar-thumb { background: #78350f; border-radius: 4px; border: 1px solid #d97706; }
+        ::-webkit-scrollbar-thumb:hover { background: #92400e; }
+
+        /* Specific scrollbar for the menu to make it subtle */
+        .menu-scrollbar::-webkit-scrollbar { width: 6px; }
+        .menu-scrollbar::-webkit-scrollbar-track { background: rgba(0,0,0,0.2); border-radius: 4px; }
+        .menu-scrollbar::-webkit-scrollbar-thumb { background: rgba(217, 119, 6, 0.5); border-radius: 4px; }
+        .menu-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(217, 119, 6, 0.8); }
+
+        /* Hide scrollbar but keep functionality for mobile menu */
+        .scrollbar-hide::-webkit-scrollbar {
+            display: none;
+        }
+        .scrollbar-hide {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+
+        /* ================= MAGIC EFFECTS CSS ================= */
+        .magic-sparkle {
+            position: fixed;
+            pointer-events: none;
+            border-radius: 50%;
+            z-index: 9999;
+            /* Brilho intenso em múltiplas camadas */
+            box-shadow: 0 0 5px #fff, 0 0 15px #fde047, 0 0 25px #d97706;
+            animation: float-up 1s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+            mix-blend-mode: screen; /* Deixa a magia incandescente sobre fundos escuros */
+        }
+        
+        @keyframes float-up {
+            0% { opacity: 1; transform: scale(1) translateY(0); }
+            50% { opacity: 0.9; transform: scale(1.5) translateY(-20px); }
+            100% { opacity: 0; transform: scale(0.1) translateY(-60px); }
+        }
+
+        .magic-burst {
+            position: fixed;
+            pointer-events: none;
+            border-radius: 50%;
+            z-index: 9999;
+            mix-blend-mode: screen;
+        }
+
+        .magic-flash {
+            position: fixed;
+            pointer-events: none;
+            border-radius: 50%;
+            z-index: 9998;
+            background: radial-gradient(circle, rgba(255,255,255,1) 0%, rgba(253,224,71,0.8) 30%, transparent 70%);
+            transform: translate(-50%, -50%);
+            mix-blend-mode: screen;
+        }
+    </style>
+</head>
+<body class="antialiased min-h-screen flex flex-col">
+
+    <!-- Header Grimoire -->
+    <header class="bg-stone-900 text-amber-50 p-5 shadow-[0_4px_20px_rgba(0,0,0,0.5)] border-b-4 border-amber-700 sticky top-0 z-30 relative overflow-hidden">
+        <div class="absolute inset-0 opacity-10 bg-[url('https://www.transparenttextures.com/patterns/black-scales.png')]"></div>
+        <div class="max-w-[90rem] mx-auto flex flex-col sm:flex-row items-center justify-between relative z-10 gap-3 sm:gap-0">
+            <h1 class="text-2xl lg:text-3xl font-bold flex items-center gap-3 text-amber-500 tracking-wider">
+                <i class="fa-solid fa-book-journal-whills text-3xl lg:text-4xl"></i>
+                Grimório Pediátrico
+            </h1>
+            <span class="text-xs bg-stone-800 text-amber-400 px-4 py-1.5 rounded-sm border border-amber-700/50 uppercase tracking-widest font-semibold shadow-inner">Uso Mestre</span>
+        </div>
+    </header>
+
+    <main class="flex-grow max-w-[90rem] mx-auto w-full p-4 flex flex-col gap-6 mt-4 pb-6">
+        
+        <!-- Disclaimer -->
+        <div class="bg-amber-900/90 border-l-4 border-amber-500 p-4 rounded text-sm text-amber-100 shadow-lg backdrop-blur-sm">
+            <p><i class="fa-solid fa-scroll mr-2"></i> <strong>Atenção:</strong> Artefato auxiliar de magias curativas. A responsabilidade pela alquimia final é do mago(a) assistente. Confira as poções.</p>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <!-- Inputs Section (Patient Data) -->
+            <section class="parchment-bg p-6 rounded-lg shadow-xl border border-amber-900/20 relative lg:col-span-2">
+                <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-amber-600 to-transparent opacity-50"></div>
+                <h2 class="text-xl font-bold mb-4 text-stone-800 border-b border-stone-300 pb-2 flex items-center gap-2">
+                    <i class="fa-solid fa-user-shield text-amber-700"></i> Atributos do Aventureiro
+                </h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label class="block text-sm font-bold text-stone-600 mb-1 uppercase tracking-wider">Massa (kg) <span class="text-red-600">*</span></label>
+                        <div class="relative">
+                            <i class="fa-solid fa-weight-scale absolute left-3 top-3.5 text-stone-400"></i>
+                            <input type="number" id="input-peso" step="0.1" placeholder="Ex: 12.5" 
+                                   class="w-full bg-white border-2 border-stone-300 rounded p-3 pl-10 text-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none transition font-semibold text-stone-800 shadow-inner"
+                                   oninput="calcularDoses()">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-bold text-stone-600 mb-1 uppercase tracking-wider">Idade (Opcional)</label>
+                        <div class="relative">
+                            <i class="fa-solid fa-hourglass-half absolute left-3 top-3.5 text-stone-400"></i>
+                            <input type="text" id="input-idade" placeholder="Ex: 2 anos e 3 meses" 
+                                   class="w-full bg-white border-2 border-stone-300 rounded p-3 pl-10 focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none transition text-stone-800 shadow-inner">
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Search Bar -->
+            <section class="parchment-bg p-6 rounded-lg shadow-xl border border-amber-900/20 flex flex-col justify-center">
+                <h2 class="text-xl font-bold mb-4 text-stone-800 border-b border-stone-300 pb-2 flex items-center gap-2">
+                    <i class="fa-solid fa-magnifying-glass text-amber-700"></i> Localizar Magia
+                </h2>
+                <div class="relative">
+                    <i class="fa-solid fa-flask absolute left-4 top-4 text-amber-700 text-lg"></i>
+                    <input type="text" id="busca-med" placeholder="Buscar feitiço ou ingrediente..." 
+                           class="w-full bg-white border-2 border-amber-200 rounded-lg p-3 pl-12 text-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-600 outline-none transition font-medium text-stone-700 shadow-inner placeholder-stone-400"
+                           oninput="filtrarCards()">
+                </div>
+            </section>
+        </div>
+
+        <!-- Medications List Area -->
+        <section>
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-end mb-4 px-2 gap-2">
+                <h2 class="text-2xl font-bold text-amber-50 drop-shadow-md">Inventário de Poções</h2>
+                <span id="peso-display" class="text-sm font-bold text-amber-900 bg-amber-400 px-4 py-1.5 rounded-sm shadow-md border border-amber-600 hidden uppercase tracking-wider transition-all duration-300">
+                    Base: <span id="peso-valor">0</span> kg
+                </span>
+            </div>
+            
+            <!-- Two Columns Responsive Layout (Menu Independent Scrolling) -->
+            <div id="content-area" class="flex flex-col md:flex-row gap-6 opacity-50 pointer-events-none transition-opacity duration-500 pb-6 relative">
+                
+                <!-- Sidebar Menu (Categories) -->
+                <!-- Use md:max-h-[calc(100vh-14rem)] and menu-scrollbar to give it independent scrolling -->
+                <div class="w-full md:w-1/4 lg:w-1/5 flex flex-row overflow-x-auto md:flex-col gap-2 scrollbar-hide md:sticky md:top-32 md:max-h-[calc(100vh-14rem)] md:overflow-y-auto menu-scrollbar z-20 bg-stone-900/80 md:bg-transparent p-2 md:p-0 md:pr-2 rounded-lg md:rounded-none border border-stone-700 md:border-none shadow-lg md:shadow-none" id="category-menu">
+                    <!-- Gerado via JS -->
+                </div>
+
+                <!-- Cards Grid -->
+                <div class="w-full md:w-3/4 lg:w-4/5 flex flex-col gap-6" id="med-list">
+                    <!-- Gerado via JS -->
+                </div>
+
+            </div>
+        </section>
+
+        <!-- Footer / Aviso Legal -->
+        <footer class="mt-8 mb-24 p-6 bg-stone-900/60 rounded-lg border border-amber-900/30 text-center text-stone-400 text-xs leading-relaxed max-w-4xl mx-auto shadow-inner relative overflow-hidden">
+            <div class="absolute inset-0 opacity-5 bg-[url('https://www.transparenttextures.com/patterns/black-scales.png')] pointer-events-none"></div>
+            <div class="relative z-10">
+                <div class="flex justify-center mb-3">
+                    <i class="fa-solid fa-feather text-amber-700 text-xl"></i>
+                </div>
+                <p class="mb-1 font-bold text-amber-100 text-sm">© 2026 Thomás Machado. Todos os direitos autorais reservados.</p>
+                <p class="mb-4">
+                    <a href="https://instagram.com/thomask_machado" target="_blank" class="text-amber-500 hover:text-amber-400 transition-colors font-medium text-sm flex items-center justify-center gap-1">
+                        <i class="fa-brands fa-instagram"></i> @thomask_machado
+                    </a>
+                </p>
+                <div class="border-t border-stone-700/50 pt-4 mt-2">
+                    <p class="text-[11px] text-stone-500 text-justify sm:text-center">
+                        <strong class="text-amber-700 uppercase tracking-widest mr-1">Aviso Legal:</strong> 
+                        Esta ferramenta tem como finalidade auxiliar e agilizar a rotina, não substituindo o raciocínio clínico. O criador não se responsabiliza por possíveis erros, omissões ou falhas nos cálculos. Cada usuário/profissional é inteiramente responsável por conferir a exatidão dos dados inseridos e gerados antes de anexá-los a qualquer prontuário oficial.
+                    </p>
+                </div>
+            </div>
+        </footer>
+
+    </main>
+
+    <!-- Bottom Bar (Gerar Receita) -->
+    <div class="fixed bottom-0 left-0 w-full bg-stone-900 border-t-4 border-amber-700 shadow-[0_-10px_20px_rgba(0,0,0,0.5)] p-4 z-40">
+        <div class="max-w-[90rem] mx-auto flex justify-between items-center px-2 md:px-4">
+            <div class="text-sm text-amber-100 font-medium">
+                <span id="contador-selecionados" class="font-bold text-amber-500 text-xl md:text-2xl drop-shadow-md transition-all">0</span> 
+                <span class="hidden sm:inline">feitiços memorizados</span>
+                <span class="sm:hidden">itens</span>
+            </div>
+            <button onclick="abrirModalReceita()" 
+                    class="bg-gradient-to-b from-amber-600 to-amber-800 hover:from-amber-500 hover:to-amber-700 text-amber-50 font-bold py-2 md:py-3 px-6 md:px-8 rounded border border-amber-400 shadow-[0_0_15px_rgba(217,119,6,0.4)] transition flex items-center gap-2 md:gap-3 disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none rpg-title text-sm md:text-lg uppercase tracking-wider"
+                    id="btn-gerar" disabled>
+                <i class="fa-solid fa-scroll text-lg"></i>
+                <span class="hidden sm:inline">Inscrever Pergaminho</span>
+                <span class="sm:hidden">Criar</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Modal Receita -->
+    <div id="modal-receita" class="fixed inset-0 bg-stone-900/90 z-50 hidden flex items-center justify-center p-4 backdrop-blur-sm">
+        <div class="parchment-bg rounded-sm shadow-2xl w-full max-w-3xl flex flex-col max-h-[95vh] border-4 border-double border-amber-800 relative">
+            <div class="absolute -top-3 -left-3 w-8 h-8 border-t-4 border-l-4 border-amber-600"></div>
+            <div class="absolute -top-3 -right-3 w-8 h-8 border-t-4 border-r-4 border-amber-600"></div>
+            <div class="absolute -bottom-3 -left-3 w-8 h-8 border-b-4 border-l-4 border-amber-600"></div>
+            <div class="absolute -bottom-3 -right-3 w-8 h-8 border-b-4 border-r-4 border-amber-600"></div>
+
+            <div class="p-5 border-b border-amber-900/20 flex justify-between items-center bg-amber-100/50">
+                <h3 class="text-xl font-bold text-amber-900 flex items-center gap-3 rpg-title">
+                    <i class="fa-solid fa-feather-pointed text-amber-700"></i> Pergaminho Final
+                </h3>
+                <button onclick="fecharModalReceita()" class="text-stone-500 hover:text-red-700 transition text-2xl p-2">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            
+            <div class="p-4 md:p-6 overflow-y-auto flex-grow relative">
+                <div class="absolute inset-0 pointer-events-none opacity-5 flex items-center justify-center">
+                    <i class="fa-solid fa-dragon text-[15rem] md:text-[25rem]"></i>
+                </div>
+                <textarea id="texto-receita" class="w-full h-80 p-5 border-2 border-amber-200 bg-white/60 rounded font-mono text-sm md:text-base resize-none focus:ring-2 focus:ring-amber-500 outline-none text-stone-800 relative z-10 shadow-inner leading-relaxed" readonly></textarea>
+            </div>
+            
+            <div class="p-5 border-t border-amber-900/20 bg-amber-100/50 flex justify-end gap-4">
+                <button onclick="fecharModalReceita()" class="px-6 py-2.5 text-stone-700 font-bold hover:bg-amber-200 rounded transition border border-amber-300">Guardar</button>
+                <button onclick="copiarReceita()" id="btn-copiar" class="px-6 py-2.5 bg-stone-800 hover:bg-stone-700 text-amber-400 font-bold rounded shadow-lg flex items-center gap-2 transition border border-stone-600 uppercase tracking-wide">
+                    <i class="fa-solid fa-copy"></i> Copiar Magia
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="fixed top-28 right-4 bg-amber-900 text-amber-100 px-6 py-4 rounded border-2 border-amber-500 shadow-[0_0_20px_rgba(217,119,6,0.3)] transform translate-x-full transition-transform duration-300 z-50 flex items-center gap-3 font-bold">
+        <i class="fa-solid fa-wand-magic-sparkles text-amber-400 text-xl"></i>
+        <span id="toast-msg">Magia copiada para a área de transferência!</span>
+    </div>
+
+    <script>
+        // ================= MAGIC VISUAL EFFECTS =================
+        let lastSparkleTime = 0;
+        
+        // Cores vibrantes para o pó mágico
+        const sparkleColors = ['#fff', '#fde047', '#f59e0b', '#fbbf24', '#fffbeb'];
+
+        // Efeito 1: Rastro do mouse (Brilho de magia constante e denso)
+        document.addEventListener('mousemove', (e) => {
+            const now = Date.now();
+            if (now - lastSparkleTime > 30) { // Frequência aumentada para um rastro mais rico
+                createSparkle(e.clientX, e.clientY);
+                lastSparkleTime = now;
+            }
+        });
+
+        function createSparkle(x, y) {
+            const sparkle = document.createElement('div');
+            sparkle.className = 'magic-sparkle';
+            // Tamanho aleatório mais robusto
+            const size = Math.random() * 5 + 3;
+            sparkle.style.width = `${size}px`;
+            sparkle.style.height = `${size}px`;
+            
+            // Escolhe uma cor da paleta
+            sparkle.style.backgroundColor = sparkleColors[Math.floor(Math.random() * sparkleColors.length)];
+            
+            // Pequena variação na posição
+            const offsetX = (Math.random() - 0.5) * 20;
+            const offsetY = (Math.random() - 0.5) * 20;
+            sparkle.style.left = `${x + offsetX}px`;
+            sparkle.style.top = `${y + offsetY}px`;
+            
+            document.body.appendChild(sparkle);
+            // Remove do DOM após a animação (1 segundo, conforme o CSS float-up)
+            setTimeout(() => sparkle.remove(), 1000);
+        }
+
+        // Efeito 2: Explosão ao clicar no card com onda de choque
+        function createBurst(x, y, isAdding) {
+            const baseColor = isAdding ? '#fde047' : '#e5e7eb'; // Amarelo se add, Cinza se remove
+            const glowColor = isAdding ? '#d97706' : '#9ca3af';
+            
+            // Onda de choque (Flash central)
+            const flash = document.createElement('div');
+            flash.className = 'magic-flash';
+            flash.style.left = `${x}px`;
+            flash.style.top = `${y}px`;
+            flash.style.width = '120px';
+            flash.style.height = '120px';
+            if (!isAdding) flash.style.filter = 'grayscale(100%) opacity(0.6)';
+            
+            flash.animate([
+                { transform: 'translate(-50%, -50%) scale(0.1)', opacity: 1 },
+                { transform: 'translate(-50%, -50%) scale(2.5)', opacity: 0 }
+            ], {
+                duration: 400,
+                easing: 'ease-out'
+            });
+            document.body.appendChild(flash);
+            setTimeout(() => flash.remove(), 400);
+
+            // Partículas explodindo
+            const numParticles = 25; // Mais partículas para maior impacto
+            for (let i = 0; i < numParticles; i++) {
+                const particle = document.createElement('div');
+                particle.className = 'magic-burst';
+                const size = Math.random() * 6 + 3;
+                particle.style.width = `${size}px`;
+                particle.style.height = `${size}px`;
+                particle.style.left = `${x}px`;
+                particle.style.top = `${y}px`;
+                
+                // Algumas partículas ficam brancas para simular centro quente
+                particle.style.backgroundColor = Math.random() > 0.7 ? '#ffffff' : baseColor;
+                particle.style.boxShadow = `0 0 10px ${baseColor}, 0 0 20px ${glowColor}`;
+                
+                // Explode em círculo
+                const angle = (Math.PI * 2 * i) / numParticles + (Math.random() * 0.5);
+                const velocity = Math.random() * 80 + 30;
+                const tx = Math.cos(angle) * velocity;
+                const ty = Math.sin(angle) * velocity - 20; // Uma leve tendência a flutuar para cima no fim
+                
+                particle.animate([
+                    { transform: 'translate(-50%, -50%) scale(1)', opacity: 1 },
+                    { transform: `translate(calc(-50% + ${tx}px), calc(-50% + ${ty}px)) scale(0)`, opacity: 0 }
+                ], {
+                    duration: 600 + Math.random() * 500,
+                    easing: 'cubic-bezier(0.1, 0.8, 0.3, 1)', // Efeito: Dispara rápido, depois freia
+                    fill: 'forwards'
+                });
+                
+                document.body.appendChild(particle);
+                setTimeout(() => particle.remove(), 1200);
+            }
+        }
+
+
+        // ================= DATABASE =================
+        const medicamentos = [
+            // ================= ANALGÉSICOS E ANTITÉRMICOS =================
+            {
+                id: 'dipirona',
+                categoria: 'Analgésicos / Antitérmicos',
+                nome: 'Dipirona Gotas (500 mg/mL)',
+                regraTexto: '1 gota/kg/dose (Máx: 40 gotas)',
+                baseCalculo: 'mg/kg/dose',
+                calcular: (peso) => {
+                    let gotas = Math.floor(peso);
+                    return gotas > 40 ? 40 : gotas;
+                },
+                unidade: 'gotas',
+                posologia: 'Dar {dose} {unidade} por via oral, de 6/6 horas, se dor ou febre (Tax > 37,8ºC).'
+            },
+            {
+                id: 'dipirona_xarope',
+                categoria: 'Analgésicos / Antitérmicos',
+                nome: 'Dipirona Solução Oral (50 mg/mL)',
+                regraTexto: '0,4 mL/kg/dose (Máx: 20 mL)',
+                baseCalculo: 'mL/kg/dose',
+                calcular: (peso) => {
+                    let ml = peso * 0.4;
+                    return ml > 20 ? '20.0' : ml.toFixed(1);
+                },
+                unidade: 'mL',
+                posologia: 'Dar {dose} {unidade} por via oral, de 6/6 horas, se dor ou febre.'
+            },
+            {
+                id: 'paracetamol',
+                categoria: 'Analgésicos / Antitérmicos',
+                nome: 'Paracetamol Gotas (200 mg/mL)',
+                regraTexto: '1 gota/kg/dose (Máx: 35 gotas)',
+                baseCalculo: 'mg/kg/dose',
+                calcular: (peso) => {
+                    let gotas = Math.floor(peso);
+                    return gotas > 35 ? 35 : gotas;
+                },
+                unidade: 'gotas',
+                posologia: 'Dar {dose} {unidade} por via oral, de 6/6 horas, se dor ou febre.'
+            },
+
+            // ================= ANTI-INFLAMATÓRIOS =================
+            {
+                id: 'ibuprofeno_50',
+                categoria: 'Anti-inflamatórios',
+                nome: 'Ibuprofeno Gotas (50 mg/mL)',
+                regraTexto: '1 gota/kg/dose (Máx: 40 gotas)',
+                baseCalculo: '5 mg/kg/dose',
+                calcular: (peso) => {
+                    let gotas = Math.floor(peso);
+                    return gotas > 40 ? 40 : gotas;
+                },
+                unidade: 'gotas',
+                posologia: 'Dar {dose} {unidade} por via oral, de 6/6 horas ou 8/8 horas, se dor ou febre.'
+            },
+            {
+                id: 'ibuprofeno_100',
+                categoria: 'Anti-inflamatórios',
+                nome: 'Ibuprofeno Gotas (100 mg/mL)',
+                regraTexto: '1 gota/kg/dose (Máx: 40 gotas)',
+                baseCalculo: '10 mg/kg/dose',
+                calcular: (peso) => {
+                    let gotas = Math.floor(peso);
+                    return gotas > 40 ? 40 : gotas;
+                },
+                unidade: 'gotas',
+                posologia: 'Dar {dose} {unidade} por via oral, de 6/6 horas ou 8/8 horas, se dor ou febre.'
+            },
+
+            // ================= ANTIBIÓTICOS =================
+            {
+                id: 'amoxicilina_250',
+                categoria: 'Antibióticos',
+                nome: 'Amoxicilina Suspensão (250 mg/5 mL)',
+                regraTexto: '50 mg/kg/dia dividido em 3 doses (8/8h)',
+                baseCalculo: 'mg/kg/dia',
+                calcular: (peso) => {
+                    let mgDose = (peso * 50) / 3;
+                    let ml = (mgDose * 5) / 250;
+                    return ml.toFixed(1);
+                },
+                unidade: 'mL',
+                posologia: 'Dar {dose} {unidade} por via oral, de 8/8 horas, por 7 a 10 dias.'
+            },
+            {
+                id: 'amoxicilina_clavulanato_400',
+                categoria: 'Antibióticos',
+                nome: 'Amox. + Clavulanato (400 mg/5 mL)',
+                regraTexto: '45 mg/kg/dia dividido em 2 doses (12/12h)',
+                baseCalculo: 'mg/kg/dia',
+                calcular: (peso) => {
+                    let mgDose = (peso * 45) / 2;
+                    let ml = (mgDose * 5) / 400;
+                    return ml.toFixed(1);
+                },
+                unidade: 'mL',
+                posologia: 'Dar {dose} {unidade} por via oral, de 12/12 horas, por 7 a 10 dias.'
+            },
+            {
+                id: 'azitromicina_200',
+                categoria: 'Antibióticos',
+                nome: 'Azitromicina Suspensão (200 mg/5 mL)',
+                regraTexto: '10 mg/kg/dia em dose única (1x ao dia)',
+                baseCalculo: 'mg/kg/dia',
+                calcular: (peso) => {
+                    let mgDia = peso * 10;
+                    let ml = (mgDia * 5) / 200;
+                    return ml.toFixed(1);
+                },
+                unidade: 'mL',
+                posologia: 'Dar {dose} {unidade} por via oral, 1 vez ao dia, por 3 a 5 dias.'
+            },
+            {
+                id: 'cefalexina_250',
+                categoria: 'Antibióticos',
+                nome: 'Cefalexina Suspensão (250 mg/5 mL)',
+                regraTexto: '50 mg/kg/dia dividido em 4 doses (6/6h)',
+                baseCalculo: 'mg/kg/dia',
+                calcular: (peso) => {
+                    let mgDose = (peso * 50) / 4;
+                    let ml = (mgDose * 5) / 250;
+                    return ml.toFixed(1);
+                },
+                unidade: 'mL',
+                posologia: 'Dar {dose} {unidade} por via oral, de 6/6 horas, por 7 a 10 dias.'
+            },
+            {
+                id: 'cefixima_100',
+                categoria: 'Antibióticos',
+                nome: 'Cefixima Suspensão (100 mg/5 mL)',
+                regraTexto: '8 mg/kg/dia dividido em 1 ou 2 doses (12/12h)',
+                baseCalculo: 'mg/kg/dia',
+                calcular: (peso) => {
+                    let mgDose = (peso * 8) / 2; // cálculo para 12/12h
+                    let ml = (mgDose * 5) / 100;
+                    return ml.toFixed(1);
+                },
+                unidade: 'mL',
+                posologia: 'Dar {dose} {unidade} por via oral, de 12/12 horas, por 7 a 10 dias (ou o dobro da dose 1x/dia).'
+            },
+            {
+                id: 'ceftriaxona',
+                categoria: 'Antibióticos',
+                nome: 'Ceftriaxona Injetável',
+                regraTexto: '50 a 100 mg/kg/dia em dose única (Usando 50mg/kg)',
+                baseCalculo: 'mg/kg/dia',
+                calcular: (peso) => {
+                    let mg = peso * 50;
+                    return mg > 2000 ? '2000.0' : mg.toFixed(1);
+                },
+                unidade: 'mg',
+                posologia: 'Fazer {dose} {unidade} por via Intramuscular (IM) profundo ou Intravenosa (IV), 1x ao dia.'
+            },
+
+            // ================= ANTIALÉRGICOS E SINTOMÁTICOS =================
+            {
+                id: 'desloratadina',
+                categoria: 'Antialérgicos / Sintomáticos',
+                nome: 'Desloratadina Xarope (0,5 mg/mL)',
+                regraTexto: '<10kg: 2mL | 10 a 20kg: 2,5mL | >20kg: 5mL',
+                baseCalculo: 'Por idade/peso médio',
+                calcular: (peso) => {
+                     if (peso < 10) return '2.0';
+                     if (peso <= 20) return '2.5';
+                     return '5.0';
+                },
+                unidade: 'mL',
+                posologia: 'Dar {dose} {unidade} por via oral, 1 vez ao dia.'
+            },
+            {
+                id: 'loratadina',
+                categoria: 'Antialérgicos / Sintomáticos',
+                nome: 'Loratadina Xarope (1 mg/mL)',
+                regraTexto: '<30kg: 5 mL | >30kg: 10 mL',
+                baseCalculo: 'Por peso médio',
+                calcular: (peso) => {
+                     return peso < 30 ? '5.0' : '10.0';
+                },
+                unidade: 'mL',
+                posologia: 'Dar {dose} {unidade} por via oral, 1 vez ao dia.'
+            },
+            {
+                id: 'koide_d',
+                categoria: 'Antialérgicos / Sintomáticos',
+                nome: 'Dexclorfeniramina + Betametasona (Koide D)',
+                regraTexto: '0,25 mL/kg/dose (Máximo: 5 mL/dose)',
+                baseCalculo: 'mL/kg/dose',
+                calcular: (peso) => {
+                    let ml = peso * 0.25;
+                    return ml > 5 ? '5.0' : ml.toFixed(1);
+                },
+                unidade: 'mL',
+                posologia: 'Dar {dose} {unidade} por via oral, de 8/8 horas.'
+            },
+            {
+                id: 'prometazina',
+                categoria: 'Antialérgicos / Sintomáticos',
+                nome: 'Prometazina Injetável (25 mg/mL)',
+                regraTexto: '0,5 mg/kg/dose (Máx: 1mL = 25mg) - Evitar <2 anos',
+                baseCalculo: 'mL/kg/dose',
+                calcular: (peso) => {
+                    let doseMg = peso * 0.5;
+                    if (doseMg > 25) doseMg = 25;
+                    let ml = doseMg / 25;
+                    return ml.toFixed(1);
+                },
+                unidade: 'mL',
+                posologia: 'Fazer {dose} {unidade} por via Intramuscular (IM) profundo, dose única.'
+            },
+
+            // ================= GASTROINTESTINAL E ANTIEMÉTICOS =================
+            {
+                id: 'ondansetrona',
+                categoria: 'Gastrointestinal',
+                nome: 'Ondansetrona (Cloridrato) - ODT',
+                regraTexto: '8-15kg: 2mg | 15-30kg: 4mg | >30kg: 8mg',
+                baseCalculo: 'Por faixa de peso',
+                calcular: (peso) => {
+                    if (peso < 8) return 'Não recomendado < 8kg';
+                    if (peso <= 15) return '2 mg (1/2 comp de 4mg)';
+                    if (peso <= 30) return '4 mg (1 comp de 4mg)';
+                    return '8 mg (1 comp de 8mg ou 2 de 4mg)';
+                },
+                unidade: '',
+                posologia: 'Dar {dose} por via oral (dissolver na boca), de 8/8 horas se náuseas ou vômitos.'
+            },
+            {
+                id: 'ondansetrona_sol',
+                categoria: 'Gastrointestinal',
+                nome: 'Ondansetrona Solução Oral (4 mg/5 mL)',
+                regraTexto: '0,15 mg/kg/dose (Máx: 10 mL)',
+                baseCalculo: 'mg/kg/dose',
+                calcular: (peso) => {
+                    let doseMg = peso * 0.15;
+                    if (doseMg > 8) doseMg = 8;
+                    let ml = (doseMg * 5) / 4;
+                    return ml.toFixed(1);
+                },
+                unidade: 'mL',
+                posologia: 'Dar {dose} {unidade} por via oral, de 8/8 horas, se náuseas ou vômitos.'
+            },
+            {
+                id: 'domperidona',
+                categoria: 'Gastrointestinal',
+                nome: 'Domperidona Suspensão (1 mg/mL)',
+                regraTexto: '0,25 mg/kg/dose (Aprox. 2,5mL a cada 10kg)',
+                baseCalculo: 'mL/kg/dose',
+                calcular: (peso) => {
+                    let ml = peso * 0.25;
+                    return ml > 10 ? '10.0' : ml.toFixed(1);
+                },
+                unidade: 'mL',
+                posologia: 'Dar {dose} {unidade} por via oral, 15 a 30 min antes das refeições, de 8/8 horas, se vômitos.'
+            },
+            {
+                id: 'racecadotrila',
+                categoria: 'Gastrointestinal',
+                nome: 'Racecadotrila (Tiorfan Sachê)',
+                regraTexto: '<9kg: 10mg | 9-13kg: 20mg | 13-27kg: 30mg',
+                baseCalculo: 'Por faixa de peso',
+                calcular: (peso) => {
+                    if (peso < 9) return '10 mg (1 sachê de 10mg)';
+                    if (peso <= 13) return '20 mg (2 sachês de 10mg)';
+                    if (peso <= 27) return '30 mg (1 sachê de 30mg)';
+                    return '1 cápsula de 100mg';
+                },
+                unidade: '',
+                posologia: 'Dar {dose} por via oral, de 8/8 horas, até a cessação da diarreia (máx 7 dias).'
+            },
+            {
+                id: 'bromoprida',
+                categoria: 'Gastrointestinal',
+                nome: 'Bromoprida Gotas (4 mg/mL)',
+                regraTexto: '1 gota/kg/dose (Máx: 40 gotas)',
+                baseCalculo: '0,5 a 1 gota/kg/dose',
+                calcular: (peso) => {
+                    let gotas = Math.floor(peso);
+                    return gotas > 40 ? 40 : gotas;
+                },
+                unidade: 'gotas',
+                posologia: 'Dar {dose} {unidade} por via oral, de 8/8 horas, se náuseas ou vômitos.'
+            },
+            {
+                id: 'simeticona',
+                categoria: 'Gastrointestinal',
+                nome: 'Simeticona Gotas (75 mg/mL)',
+                regraTexto: '1 gota/kg/dose (Máx: 15 gotas)',
+                baseCalculo: 'gotas/kg/dose',
+                calcular: (peso) => {
+                    let gotas = Math.floor(peso);
+                    return gotas > 15 ? 15 : gotas;
+                },
+                unidade: 'gotas',
+                posologia: 'Dar {dose} {unidade} por via oral, de 8/8 horas ou se cólicas/gases.'
+            },
+
+            // ================= ANTIPARASITÁRIOS =================
+            {
+                id: 'albendazol',
+                categoria: 'Antiparasitários',
+                nome: 'Albendazol Suspensão (40 mg/mL)',
+                regraTexto: '<2 anos: 5mL (200mg) | >2 anos: 10mL (400mg)',
+                baseCalculo: 'Por Idade/Peso Médio',
+                calcular: (peso) => {
+                    return peso < 12 ? '5.0' : '10.0'; // Aprox 12kg = 2 anos
+                },
+                unidade: 'mL',
+                posologia: 'Dar {dose} {unidade} por via oral, em dose única (ou por 3-5 dias dependendo do parasita).'
+            },
+            {
+                id: 'nitazoxanida',
+                categoria: 'Antiparasitários',
+                nome: 'Nitazoxanida / Anita (20 mg/mL)',
+                regraTexto: '7,5 mg/kg/dose 12/12h',
+                baseCalculo: 'mg/kg/dose',
+                calcular: (peso) => {
+                    let doseMg = peso * 7.5;
+                    let ml = doseMg / 20;
+                    return ml > 25 ? '25.0' : ml.toFixed(1); // Acima de 12a/50kg pode usar comp 500mg
+                },
+                unidade: 'mL',
+                posologia: 'Dar {dose} {unidade} por via oral, de 12/12 horas, junto com alimentos, por 3 dias.'
+            },
+
+            // ================= CORTICOIDES =================
+            {
+                id: 'prednisolona_3',
+                categoria: 'Corticoides',
+                nome: 'Prednisolona Sol. (3 mg/mL ou 15 mg/5 mL)',
+                regraTexto: '1 a 2 mg/kg/dia em dose única (Matinal)',
+                baseCalculo: 'mg/kg/dia',
+                calcular: (peso) => {
+                    let ml = peso / 3;
+                    return ml.toFixed(1);
+                },
+                unidade: 'mL',
+                posologia: 'Dar {dose} {unidade} por via oral, 1 vez ao dia (pela manhã), por 3 a 5 dias.'
+            },
+            {
+                id: 'dexametasona_elixir',
+                categoria: 'Corticoides',
+                nome: 'Dexametasona Elixir (0,1 mg/mL)',
+                regraTexto: '0,15 a 0,6 mg/kg/dose (Laringite/Crupe)',
+                baseCalculo: 'mg/kg/dose',
+                calcular: (peso) => {
+                    let doseMg = peso * 0.15; // Dose Laringite básica
+                    let ml = doseMg / 0.1;
+                    return ml.toFixed(1);
+                },
+                unidade: 'mL',
+                posologia: 'Dar {dose} {unidade} por via oral, em dose única (Atenção a volumes altos; considerar outra via).'
+            },
+            {
+                id: 'metilprednisolona_ataque',
+                categoria: 'Corticoides',
+                nome: 'Metilprednisolona Injetável (Ataque)',
+                regraTexto: '1 a 2 mg/kg/dia (Ataque asma grave - Máx: 60mg/dia)',
+                baseCalculo: 'mL/kg/dose',
+                calcular: (peso) => {
+                    let mg = peso * 2;
+                    if (mg > 60) mg = 60;
+                    let ml = mg / 60;
+                    return ml.toFixed(2);
+                },
+                unidade: 'mL',
+                posologia: 'Fazer {dose} {unidade} por via Intravenosa (IV) direta e lenta. Diluir em SG 5% ou SF 0,9%.'
+            },
+            {
+                id: 'metilprednisolona_manutencao',
+                categoria: 'Corticoides',
+                nome: 'Metilprednisolona Injetável (Manutenção)',
+                regraTexto: '1 a 2 mg/kg/dia (Manutenção - Máx: 60mg/dia)',
+                baseCalculo: 'mL/kg/dia',
+                calcular: (peso) => {
+                    let mg = peso * 1;
+                    if (mg > 60) mg = 60;
+                    let ml = mg / 60;
+                    return ml.toFixed(2);
+                },
+                unidade: 'mL',
+                posologia: 'Fazer {dose} {unidade} por via Intravenosa (IV) dividida de 12/12h. Diluir em SG 5% ou SF 0,9%.'
+            },
+            {
+                id: 'hidrocortisona',
+                categoria: 'Corticoides',
+                nome: 'Hidrocortisona Injetável',
+                regraTexto: '4 a 5 mg/kg/dose (Ataque asma/anafilaxia)',
+                baseCalculo: 'mg/kg/dose',
+                calcular: (peso) => {
+                    let mg = peso * 5;
+                    return mg > 250 ? '250.0' : mg.toFixed(1);
+                },
+                unidade: 'mg',
+                posologia: 'Fazer {dose} {unidade} por via Intravenosa (IV) direta e lenta (dose de ataque).'
+            },
+
+            // ================= SUPLEMENTOS =================
+            {
+                id: 'zinco',
+                categoria: 'Suplementos',
+                nome: 'Zinco Solução (4 mg/mL)',
+                regraTexto: '<7kg: 10mg (2,5mL) | >7kg: 20mg (5mL)',
+                baseCalculo: 'Por faixa de peso',
+                calcular: (peso) => {
+                    return peso < 7 ? '2.5' : '5.0';
+                },
+                unidade: 'mL',
+                posologia: 'Dar {dose} {unidade} por via oral, 1 vez ao dia, durante 10 a 14 dias.'
+            },
+            {
+                id: 'probiotico_sac',
+                categoria: 'Suplementos',
+                nome: 'Probiótico (S. boulardii 100mg)',
+                regraTexto: '1 sachê/cápsula 1 a 2x ao dia',
+                baseCalculo: 'Dose fixa',
+                calcular: (peso) => {
+                    return '1';
+                },
+                unidade: 'sachê',
+                posologia: 'Diluir {dose} {unidade} em água ou leite e dar por via oral, de 12/12 horas, por 5 a 7 dias.'
+            },
+
+            // ================= HIDRATAÇÃO =================
+            {
+                id: 'sro',
+                categoria: 'Hidratação',
+                nome: 'Soro de Reidratação Oral (SRO)',
+                regraTexto: '<10kg: 50 a 100mL | 10 a 30kg: 100 a 200mL após evacuação',
+                baseCalculo: 'Por perdas',
+                calcular: (peso) => {
+                    if (peso < 10) return '50 a 100';
+                    if (peso < 30) return '100 a 200';
+                    return '200 a 400';
+                },
+                unidade: 'mL',
+                posologia: 'Ofertar {dose} {unidade} por via oral, em pequenos goles, após cada episódio de diarreia ou vômito.'
+            },
+            {
+                id: 'holliday',
+                categoria: 'Hidratação',
+                nome: 'Hidratação Venosa (Regra de Holliday)',
+                regraTexto: '100mL/kg (<10kg) | +50mL/kg (10-20kg) | +20mL/kg (>20kg)',
+                baseCalculo: 'Regra de Holliday',
+                calcular: (peso) => {
+                    let vol = 0;
+                    if (peso <= 10) {
+                        vol = peso * 100;
+                    } else if (peso <= 20) {
+                        vol = 1000 + (peso - 10) * 50;
+                    } else {
+                        vol = 1500 + (peso - 20) * 20;
+                    }
+                    if(vol > 2400) vol = 2400; // Limite padrão seguro
+                    let gotejamento = vol / 24;
+                    return `${vol} mL/dia (${gotejamento.toFixed(1)} mL/h)`;
+                },
+                unidade: '',
+                posologia: 'Prescrever: SG 5% 500mL + NaCl 20% 20mL + KCl 19,1% 5mL (ou KCl 10% 10mL). Infundir total de {dose} em Bomba de Infusão Contínua (BIC).'
+            },
+
+            // ================= RESPIRATÓRIO E EMERGÊNCIA =================
+            {
+                id: 'salbutamol_xarope',
+                categoria: 'Respiratório / Emergência',
+                nome: 'Salbutamol Xarope (2 mg/5 mL)',
+                regraTexto: '0,15 mg/kg/dose (Máximo: 10 mL/dose)',
+                baseCalculo: 'mg/kg/dose',
+                calcular: (peso) => {
+                    let mgDose = peso * 0.15;
+                    let ml = (mgDose * 5) / 2;
+                    return ml > 10 ? '10.0' : ml.toFixed(1);
+                },
+                unidade: 'mL',
+                posologia: 'Dar {dose} {unidade} por via oral, de 8/8 horas ou 6/6 horas, se cansaço.'
+            },
+            {
+                id: 'salbutamol_neb',
+                categoria: 'Respiratório / Emergência',
+                nome: 'Salbutamol Sol. p/ Nebulização (5 mg/mL)',
+                regraTexto: '0,15 mg/kg/dose (Máx: 20 gotas = 5mg)',
+                baseCalculo: 'mg/kg/dose',
+                calcular: (peso) => {
+                    let mgDose = peso * 0.15;
+                    if (mgDose > 5) mgDose = 5;
+                    let gotas = Math.round(mgDose / 0.25); // 1 gota = 0,25mg
+                    return gotas > 20 ? 20 : gotas;
+                },
+                unidade: 'gotas',
+                posologia: 'Diluir {dose} {unidade} em 3 a 5 mL de Soro Fisiológico 0,9% e inalar de 4/4h ou 6/6h.'
+            },
+            {
+                id: 'salbutamol_spray',
+                categoria: 'Respiratório / Emergência',
+                nome: 'Salbutamol Aerossol/Spray (100 mcg/jato)',
+                regraTexto: '1 jato p/ cada 3kg (Máx: 10 jatos)',
+                baseCalculo: 'jatos/peso',
+                calcular: (peso) => {
+                    let jatos = Math.round(peso / 3);
+                    if (jatos < 1) jatos = 1;
+                    return jatos > 10 ? 10 : jatos;
+                },
+                unidade: 'jato(s)',
+                posologia: 'Aplicar {dose} {unidade} via inalatória (usar espaçador com máscara), de 4/4h ou 6/6h, em caso de crise.'
+            },
+            {
+                id: 'ipratropio',
+                categoria: 'Respiratório / Emergência',
+                nome: 'Ipratrópio Brometo (0,25 mg/mL)',
+                regraTexto: '<10kg: 10gts | 10-20kg: 20gts | >20kg: 40gts',
+                baseCalculo: 'Por peso médio',
+                calcular: (peso) => {
+                     if (peso < 10) return '10';
+                     if (peso <= 20) return '20';
+                     return '40';
+                },
+                unidade: 'gotas',
+                posologia: 'Diluir {dose} {unidade} em Soro Fisiológico 0,9% e inalar junto com o Salbutamol.'
+            },
+            {
+                id: 'adrenalina_neb',
+                categoria: 'Respiratório / Emergência',
+                nome: 'Adrenalina Injetável (1 mg/mL) p/ Nebulização',
+                regraTexto: '0,5 mL/kg/dose (Máx: 5 mL)',
+                baseCalculo: 'mL/kg/dose',
+                calcular: (peso) => {
+                    let ml = peso * 0.5;
+                    return ml > 5 ? '5.0' : ml.toFixed(1);
+                },
+                unidade: 'mL',
+                posologia: 'Fazer nebulização com {dose} {unidade} da ampola pura ou completar com Soro Fisiológico 0,9% até 5mL (fluxo de O2 a 6-8 L/min).'
+            }
+        ];
+
+        let selecionados = new Set();
+        let pesoAtual = 0;
+        let categoriaAtual = 'Todos';
+
+        function init() {
+            renderizarCards();
+        }
+
+        function renderizarCards(termoBusca = '') {
+            const menuContainer = document.getElementById('category-menu');
+            const listContainer = document.getElementById('med-list');
+            
+            menuContainer.innerHTML = '';
+            listContainer.innerHTML = '';
+
+            // Agrupa os medicamentos por categoria
+            const grupos = {};
+            medicamentos.forEach(med => {
+                if (!grupos[med.categoria]) grupos[med.categoria] = [];
+                grupos[med.categoria].push(med);
+            });
+
+            const categoriasOrdenadas = Object.keys(grupos).sort();
+
+            // Função auxiliar para renderizar botões do menu
+            const renderBotaoMenu = (nome, isAtivo, icone) => {
+                const btn = document.createElement('button');
+                btn.className = `whitespace-nowrap flex-shrink-0 text-left px-4 py-3 rounded border transition-all duration-200 uppercase tracking-wider font-bold text-sm rpg-title flex justify-between items-center ${isAtivo ? 'bg-amber-900/80 text-amber-400 border-amber-500 shadow-inner' : 'bg-stone-900/60 text-stone-400 border-stone-700 hover:bg-stone-800 hover:text-amber-200'}`;
+                
+                btn.innerHTML = `<span class="flex items-center gap-2"><i class="${icone}"></i> ${nome}</span> ${isAtivo ? '<i class="fa-solid fa-chevron-right text-xs hidden md:block text-amber-500"></i>' : ''}`;
+                
+                btn.onclick = () => {
+                    document.getElementById('busca-med').value = ''; // Limpa a busca ao trocar de categoria
+                    categoriaAtual = nome;
+                    renderizarCards(); 
+                    if (pesoAtual > 0) calcularDoses();
+                };
+                return btn;
+            };
+
+            // Renderiza as categorias base: "Todos" e "Memorizados" (Apenas os selecionados na direita)
+            menuContainer.appendChild(renderBotaoMenu('Todos', categoriaAtual === 'Todos' && termoBusca === '', 'fa-solid fa-book'));
+            menuContainer.appendChild(renderBotaoMenu('Memorizados', categoriaAtual === 'Memorizados' && termoBusca === '', 'fa-solid fa-star'));
+
+            // Renderiza demais categorias dinamicamente
+            categoriasOrdenadas.forEach(categoria => {
+                menuContainer.appendChild(renderBotaoMenu(categoria, categoria === categoriaAtual && termoBusca === '', 'fa-solid fa-flask'));
+            });
+
+            // ================= ÁREA DE CARDS =================
+            let categoriasParaRenderizar = [];
+            
+            // Controle da Aba Selecionada (Filtro master)
+            if (termoBusca !== '') {
+                categoriasParaRenderizar = categoriasOrdenadas;
+            } else if (categoriaAtual === 'Todos' || categoriaAtual === 'Memorizados') {
+                categoriasParaRenderizar = categoriasOrdenadas;
+            } else {
+                categoriasParaRenderizar = [categoriaAtual];
+            }
+
+            let achouAlgo = false;
+
+            categoriasParaRenderizar.forEach(categoria => {
+                const medsFiltrados = grupos[categoria].filter(med => {
+                    // Match pela barra de pesquisa
+                    const matchBusca = termoBusca === '' || med.nome.toLowerCase().includes(termoBusca) || med.categoria.toLowerCase().includes(termoBusca);
+                    // Match pela Aba "Memorizados" (Mostrar apenas os selecionados)
+                    const matchMemorizados = categoriaAtual === 'Memorizados' ? selecionados.has(med.id) : true;
+                    
+                    return matchBusca && matchMemorizados;
+                });
+
+                if (medsFiltrados.length === 0) return;
+
+                achouAlgo = true;
+
+                // Cria a seção da categoria
+                const section = document.createElement('div');
+                section.className = 'categoria-section mb-2 bg-stone-900/40 p-5 rounded-lg border border-amber-900/30 shadow-inner w-full';
+                
+                // Cria o cabeçalho da categoria
+                const header = document.createElement('h3');
+                header.className = 'text-lg md:text-xl font-bold text-amber-500 border-b border-amber-700/50 pb-2 mb-5 flex items-center gap-2 uppercase tracking-widest rpg-title';
+                header.innerHTML = `<i class="fa-solid fa-flask text-amber-600"></i> ${categoria}`;
+                section.appendChild(header);
+
+                // Cria o grid de medicamentos responsivo (até 4 colunas em telas muito grandes)
+                const grid = document.createElement('div');
+                grid.className = 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5';
+
+                medsFiltrados.forEach(med => {
+                    const isSelected = selecionados.has(med.id);
+                    const card = document.createElement('div');
+                    card.className = `med-card rounded-md p-5 cursor-pointer flex flex-col justify-between group ${isSelected ? 'selected' : ''}`;
+                    card.id = `card-${med.id}`;
+                    
+                    // Adicionado parâmetro 'event' para extrair posição de clique para a magia
+                    card.onclick = (e) => toggleSelecao(med.id, e);
+
+                    const checkClass = isSelected ? 'checkbox-ui w-7 h-7 min-w-[28px] rounded border-2 flex items-center justify-center text-white transition-all shadow-inner selected-check border-amber-500' : 'checkbox-ui w-7 h-7 min-w-[28px] rounded border-2 flex items-center justify-center text-white transition-all shadow-inner border-stone-300 bg-white';
+                    const iconClass = isSelected ? 'fa-solid fa-check text-sm transition-opacity drop-shadow' : 'fa-solid fa-check text-sm opacity-0 transition-opacity drop-shadow';
+
+                    card.innerHTML = `
+                        <div class="pointer-events-none">
+                            <h3 class="font-bold text-stone-900 text-md leading-tight group-hover:text-amber-700 transition-colors">${med.nome}</h3>
+                            
+                            <div class="mt-4 bg-[#f8efde] p-3 rounded border border-amber-200 shadow-inner">
+                                <div class="text-[11px] text-stone-500 mb-1 font-semibold uppercase tracking-wide"><i class="fa-solid fa-scroll mr-1 text-amber-600"></i> ${med.regraTexto}</div>
+                                <div class="text-2xl font-bold text-red-800 dose-calculada drop-shadow-sm" id="dose-${med.id}">
+                                    -- ${med.unidade}
+                                </div>
+                                <div class="text-[10px] text-amber-700/70 mt-1 uppercase font-bold tracking-widest">${med.baseCalculo}</div>
+                            </div>
+                        </div>
+                        
+                        <div class="mt-5 flex items-center justify-between border-t border-amber-900/10 pt-3 pointer-events-none">
+                            <div class="text-xs text-stone-600 font-medium flex-1 pr-3 line-clamp-2 italic" title="${med.posologia.replace('{dose} {unidade}', 'X').replace('{dose}', 'X')}">
+                                <i class="fa-regular fa-clock text-amber-600 mr-1"></i> ${med.posologia.split(',')[1] || 'Ver receita'}
+                            </div>
+                            <div class="${checkClass}">
+                                <i class="${iconClass}"></i>
+                            </div>
+                        </div>
+                    `;
+                    grid.appendChild(card);
+                });
+
+                section.appendChild(grid);
+                listContainer.appendChild(section);
+            });
+
+            if (!achouAlgo) {
+                if (categoriaAtual === 'Memorizados' && termoBusca === '') {
+                     listContainer.innerHTML = '<div class="text-amber-500 p-8 text-center font-bold text-lg rpg-title w-full"><i class="fa-solid fa-scroll text-4xl mb-4 block opacity-50"></i> Seu pergaminho está em branco. Memorize feitiços na aba "Todos" primeiro.</div>';
+                } else {
+                     listContainer.innerHTML = '<div class="text-amber-500 p-8 text-center font-bold text-lg rpg-title w-full"><i class="fa-solid fa-ghost text-4xl mb-4 block opacity-50"></i> Nenhum feitiço encontrado no grimório.</div>';
+                }
+            }
+        }
+
+        function calcularDoses() {
+            const pesoInput = document.getElementById('input-peso').value;
+            const containerList = document.getElementById('content-area');
+            const pesoDisplay = document.getElementById('peso-display');
+            const pesoValor = document.getElementById('peso-valor');
+
+            if (!pesoInput || pesoInput <= 0) {
+                containerList.classList.add('opacity-50', 'pointer-events-none');
+                pesoDisplay.classList.add('hidden');
+                pesoAtual = 0;
+                
+                // Reseta visualmente na tela
+                const elementosDose = document.querySelectorAll('.dose-calculada');
+                elementosDose.forEach(el => {
+                    const unidade = el.innerText.split(' ').pop();
+                    el.innerHTML = `-- ${unidade}`;
+                });
+                return;
+            }
+
+            pesoAtual = parseFloat(pesoInput);
+            containerList.classList.remove('opacity-50', 'pointer-events-none');
+            pesoDisplay.classList.remove('hidden');
+            pesoValor.innerText = pesoAtual.toFixed(1);
+
+            medicamentos.forEach(med => {
+                const doseEl = document.getElementById(`dose-${med.id}`);
+                if (doseEl) { 
+                    const dose = med.calcular(pesoAtual);
+                    const doseFormatada = isNaN(dose) && typeof dose !== 'string' ? '--' : dose;
+                    doseEl.innerHTML = `<span class="text-red-700">${doseFormatada}</span> <span class="text-sm font-bold text-stone-500 uppercase">${med.unidade}</span>`;
+                }
+            });
+        }
+
+        function filtrarCards() {
+            const termo = document.getElementById('busca-med').value.toLowerCase();
+            renderizarCards(termo);
+            if (pesoAtual > 0) calcularDoses();
+        }
+
+        function toggleSelecao(id, event) {
+            const card = document.getElementById(`card-${id}`);
+            const checkbox = card.querySelector('.checkbox-ui');
+            const icon = card.querySelector('.fa-check');
+
+            let isAdding = false;
+
+            if (selecionados.has(id)) {
+                selecionados.delete(id);
+                card.classList.remove('selected');
+                checkbox.classList.remove('selected-check', 'border-amber-500');
+                checkbox.classList.add('border-stone-300', 'bg-white');
+                icon.classList.add('opacity-0');
+            } else {
+                selecionados.add(id);
+                card.classList.add('selected');
+                checkbox.classList.remove('border-stone-300', 'bg-white');
+                checkbox.classList.add('selected-check');
+                icon.classList.remove('opacity-0');
+                isAdding = true;
+            }
+
+            // Ativa o Brilho mágico de Explosão na posição do Clique
+            if (event) {
+                // Chama a função passando a posição do mouse e se está adicionando/removendo
+                createBurst(event.clientX, event.clientY, isAdding);
+            }
+
+            atualizarRodape();
+
+            // Se o usuário desmarcou o item dentro da aba "Memorizados", re-renderizamos a lista para sumir o card instantaneamente.
+            if(categoriaAtual === 'Memorizados' && !isAdding) {
+                // Pequeno delay para a pessoa ver o efeito saindo
+                setTimeout(() => {
+                    renderizarCards(''); 
+                    if (pesoAtual > 0) calcularDoses();
+                }, 300);
+            }
+        }
+
+        function atualizarRodape() {
+            const contador = document.getElementById('contador-selecionados');
+            const btnGerar = document.getElementById('btn-gerar');
+            
+            contador.innerText = selecionados.size;
+            
+            if (selecionados.size > 0) {
+                btnGerar.removeAttribute('disabled');
+            } else {
+                btnGerar.setAttribute('disabled', 'true');
+            }
+        }
+
+        function gerarTextoReceita() {
+            const peso = document.getElementById('input-peso').value;
+            const idade = document.getElementById('input-idade').value;
+            
+            let dataHoje = new Date().toLocaleDateString('pt-BR');
+            let texto = `PERGAMINHO DE CURA\nData Astral: ${dataHoje}\n`;
+            
+            if (idade) {
+                texto += `Aventureiro(a): (Nome do Paciente) - Idade: ${idade} - Peso: ${peso}kg\n`;
+            } else {
+                texto += `Aventureiro(a): (Nome do Paciente) - Peso: ${peso}kg\n`;
+            }
+            
+            texto += `\nVIA ORAL / INALATÓRIA / INJETÁVEL\n\n`;
+
+            let contadorItem = 1;
+
+            medicamentos.forEach(med => {
+                if (selecionados.has(med.id)) {
+                    let dose = med.calcular(pesoAtual);
+                    let posologiaFormatada = med.posologia.replace('{dose}', dose).replace('{unidade}', med.unidade).trim();
+                    
+                    posologiaFormatada = posologiaFormatada.replace('  ', ' '); 
+
+                    texto += `${contadorItem}) ${med.nome}\n`;
+                    texto += `   Uso: ${posologiaFormatada}\n`;
+                    texto += `   Quantidade: (  ) frascos/caixas/ampolas\n\n`;
+                    contadorItem++;
+                }
+            });
+
+            texto += `\n\n___________________________________________________\n`;
+            texto += `Selo e Assinatura do Mago Mestre\n`;
+
+            return texto;
+        }
+
+        function abrirModalReceita() {
+            const texto = gerarTextoReceita();
+            document.getElementById('texto-receita').value = texto;
+            document.getElementById('modal-receita').classList.remove('hidden');
+            
+            const btnCopiar = document.getElementById('btn-copiar');
+            btnCopiar.innerHTML = '<i class="fa-solid fa-copy"></i> Copiar Magia';
+            btnCopiar.classList.remove('bg-stone-500');
+            btnCopiar.classList.add('bg-stone-800');
+        }
+
+        function fecharModalReceita() {
+            document.getElementById('modal-receita').classList.add('hidden');
+        }
+
+        function copiarReceita() {
+            const textarea = document.getElementById('texto-receita');
+            textarea.select();
+            textarea.setSelectionRange(0, 99999); 
+
+            try {
+                document.execCommand('copy');
+                
+                const btnCopiar = document.getElementById('btn-copiar');
+                btnCopiar.innerHTML = '<i class="fa-solid fa-check"></i> Memorizado!';
+                btnCopiar.classList.remove('bg-stone-800', 'hover:bg-stone-700');
+                btnCopiar.classList.add('bg-stone-500', 'hover:bg-stone-600');
+                
+                mostrarToast();
+            } catch (err) {
+                alert('O feitiço de cópia falhou. Por favor, transcreva manualmente.');
+            }
+        }
+
+        function mostrarToast() {
+            const toast = document.getElementById('toast');
+            toast.classList.remove('translate-x-full');
+            
+            setTimeout(() => {
+                toast.classList.add('translate-x-full');
+            }, 3000);
+        }
+
+        window.onload = init;
+
+    </script>
+</body>
+</html>
